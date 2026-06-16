@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Lagrange Shop Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; transition: all 0.3s ease; }
+        
+        /* ========== THEMES ========== */
+        body.theme-light { background: linear-gradient(135deg, #f0f4e8 0%, #e2e8da 100%); color: #1a2c1a; }
+        body.theme-dark { background: linear-gradient(135deg, #1a2a1f 0%, #0f2b0f 100%); color: #e2e8d5; }
+        body.theme-blue { background: linear-gradient(135deg, #e3f2fd 0%, #bbdef5 100%); color: #0d3b66; }
+        body.theme-pink { background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); color: #880e4f; }
+        body.theme-green { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); color: #1b5e20; }
+        body.theme-purple { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); color: #4a148c; }
+
+        body.theme-dark .card, body.theme-dark .stat-card, body.theme-dark .top-bar, body.theme-dark .ai-chat,
+        body.theme-dark .barcode-scanner, body.theme-dark .sidebar { background: #2d3a2b; color: #e2e8d5; border-color: #4a5e46; }
+        body.theme-dark .btn-primary { background: #5a5f4a; }
+        body.theme-dark .form-control { background: #3e553c; border-color: #5a6e54; color: white; }
+        body.theme-dark select { background: #3e553c; color: white; border-color: #5a6e54; }
+
+        body.theme-blue .card, body.theme-blue .stat-card, body.theme-blue .top-bar, body.theme-blue .sidebar { background: white; }
+        body.theme-blue select { background: white; color: #0d3b66; border-color: #bbdef5; }
+        body.theme-pink .card, body.theme-pink .stat-card, body.theme-pink .top-bar, body.theme-pink .sidebar { background: white; }
+        body.theme-pink select { background: white; color: #880e4f; border-color: #f8bbd0; }
+        body.theme-green .card, body.theme-green .stat-card, body.theme-green .top-bar, body.theme-green .sidebar { background: white; }
+        body.theme-green select { background: white; color: #1b5e20; border-color: #c8e6c9; }
+        body.theme-purple .card, body.theme-purple .stat-card, body.theme-purple .top-bar, body.theme-purple .sidebar { background: white; }
+        body.theme-purple select { background: white; color: #4a148c; border-color: #e1bee7; }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: 280px; background: linear-gradient(180deg, #1e3a1e 0%, #0f2b0f 100%); color: white; transition: 0.3s; z-index: 1000; overflow-y: auto; transform: translateX(0); }
+        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0 !important; padding: 15px !important; } .menu-toggle { display: flex !important; } }
+        .sidebar-header { padding: 25px; text-align: center; border-bottom: 1px solid #4a5e46; }
+        .sidebar-header h2 { font-size: 1.5rem; }
+        .nav-item { margin: 8px 12px; }
+        .nav-btn { width: 100%; text-align: left; background: transparent; border: none; color: #e2e8d5; padding: 10px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+        .nav-btn:hover { background: rgba(107,112,92,0.3); transform: translateX(5px); }
+
+        /* ========== MAIN CONTENT ========== */
+        .main-content { margin-left: 280px; padding: 20px; transition: 0.3s; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .menu-toggle { display: none; background: #1a2c1a; color: white; border: none; padding: 10px 15px; border-radius: 10px; cursor: pointer; gap: 10px; align-items: center; }
+        .shop-selector { display: flex; align-items: center; gap: 10px; background: #f8faf5; padding: 5px 15px; border-radius: 30px; }
+        .shop-selector select { border: none; background: transparent; padding: 8px; font-weight: 600; }
+
+        /* ========== THEME SELECTOR ========== */
+        .theme-selector { display: flex; gap: 8px; align-items: center; background: #f8faf5; padding: 5px 12px; border-radius: 30px; }
+        .theme-btn { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .theme-btn.active { border-color: #6b705c; transform: scale(1.1); }
+        .theme-light { background: #f0f4e8; }
+        .theme-dark { background: #1a2a1f; }
+        .theme-blue { background: #2196f3; }
+        .theme-pink { background: #e91e63; }
+        .theme-green { background: #4caf50; }
+        .theme-purple { background: #9c27b0; }
+
+        /* ========== STATS ========== */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 20px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid #6b705c; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; }
+        .stat-evolution { font-size: 0.75rem; margin-top: 5px; }
+        .stat-evolution.positive { color: #27ae60; }
+        .stat-evolution.negative { color: #c0392b; }
+
+        /* ========== CARDS ========== */
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .btn-primary { background: linear-gradient(135deg, #6b705c, #5a5f4a); color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .btn-primary:hover { transform: scale(1.02); }
+        .btn-danger { background: #c0392b; color: white; border: none; padding: 5px 12px; border-radius: 20px; cursor: pointer; }
+        .btn-secondary { background: transparent; border: 1.5px solid #6b705c; color: #6b705c; padding: 6px 14px; border-radius: 30px; cursor: pointer; }
+
+        /* ========== FORMULAIRES ========== */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8d0; border-radius: 12px; }
+        .form-control:focus { outline: none; border-color: #6b705c; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 150px; }
+
+        /* ========== TABLEAUX ========== */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eef2e6; white-space: nowrap; }
+        th { background: #f8faf5; font-weight: 600; }
+
+        /* ========== AUTOCOMPLETE ========== */
+        .autocomplete-container { position: relative; }
+        .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8d0; border-radius: 12px; max-height: 200px; overflow-y: auto; z-index: 10; display: none; }
+        .autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eef2e6; }
+        .autocomplete-item:hover { background: #f0f4e8; }
+        body.theme-dark .autocomplete-dropdown { background: #2d3a2b; border-color: #4a5e46; }
+
+        /* ========== CALCULATRICE ========== */
+        .calculator { background: #2c3e2b; border-radius: 20px; padding: 15px; margin-top: 20px; }
+        .calculator-display { background: white; border-radius: 12px; padding: 15px; text-align: right; font-size: 1.5rem; font-weight: 600; margin-bottom: 15px; }
+        .calculator-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .calc-btn { background: white; border: none; padding: 12px; border-radius: 12px; font-size: 1rem; cursor: pointer; }
+        .calc-btn-op { background: #6b705c; color: white; }
+
+        /* ========== SCANNER ========== */
+        .barcode-scanner { background: #f8faf5; border: 2px dashed #6b705c; border-radius: 16px; padding: 15px; text-align: center; margin-bottom: 15px; cursor: pointer; }
+
+        /* ========== TOAST ========== */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e3a1e; color: white; padding: 10px 20px; border-radius: 30px; z-index: 1001; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ========== CHAT IA ========== */
+        .ai-chat { background: #f8faf5; border-radius: 20px; padding: 20px; margin-top: 20px; min-height: 400px; max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; }
+        .chat-message { display: flex; margin-bottom: 15px; }
+        .chat-message.user { justify-content: flex-end; }
+        .chat-message.bot { justify-content: flex-start; }
+        .chat-bubble { max-width: 70%; padding: 10px 15px; border-radius: 18px; }
+        .chat-message.user .chat-bubble { background: #6b705c; color: white; border-bottom-right-radius: 4px; }
+        .chat-message.bot .chat-bubble { background: #e2e8d0; color: #1a2c1a; border-bottom-left-radius: 4px; }
+        .thinking { display: flex; gap: 5px; padding: 10px 15px; }
+        .thinking span { width: 8px; height: 8px; background: #6b705c; border-radius: 50%; animation: bounce 1.4s infinite; }
+        @keyframes bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+        .suggestion-btn { background: #6b705c; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+
+        /* ========== MASCOTTE ========== */
+        .mascot { position: fixed; bottom: 20px; left: 300px; font-size: 40px; cursor: pointer; z-index: 99; transition: 0.2s; animation: bounce 2s infinite; }
+        .mascot:hover { transform: scale(1.1); }
+        .mascot-bubble { position: fixed; bottom: 80px; left: 350px; background: white; border-radius: 20px; padding: 10px 15px; font-size: 12px; max-width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: none; z-index: 99; }
+        @media (max-width: 768px) { .mascot { left: 20px; bottom: 70px; } .mascot-bubble { left: 70px; bottom: 80px; } }
+
+        /* ========== MINI-JEU ========== */
+        .memory-game { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+        .memory-card { background: #6b705c; aspect-ratio: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; transition: 0.2s; color: white; }
+        .memory-card.flipped { background: white; color: #6b705c; }
+        .memory-card.matched { visibility: hidden; opacity: 0; pointer-events: none; }
+
+        /* ========== UTILITAIRES ========== */
+        .text-danger { color: #c0392b; }
+        .text-success { color: #27ae60; }
+        .gap-2 { gap: 10px; }
+        .flex { display: flex; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .mt-2 { margin-top: 10px; }
+        .mt-3 { margin-top: 15px; }
+        .mb-2 { margin-bottom: 10px; }
+        .ml-2 { margin-left: 10px; }
+        .w-full { width: 100%; }
+        .grid-cols-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+        .loading-mascot { text-align: center; padding: 50px; font-size: 50px; }
+    </style>
+</head>
+<body class="theme-light">
+
+<button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i> Menu</button>
+
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header"><h2>🛒 Lagrange</h2><p>Shop Manager Pro</p></div>
+    <nav>
+        <div class="nav-item"><button class="nav-btn" onclick="loadDashboard(); closeSidebar()"><i class="fas fa-chart-line"></i> Dashboard</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="loadShopsList(); closeSidebar()"><i class="fas fa-store"></i> Mes boutiques</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showCreateShop(); closeSidebar()"><i class="fas fa-plus"></i> Nouvelle boutique</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="loadProducts(); closeSidebar()"><i class="fas fa-box"></i> Produits</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showCreateProduct(); closeSidebar()"><i class="fas fa-tag"></i> Ajouter produit</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showSale(); closeSidebar()"><i class="fas fa-cash-register"></i> Vente</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="loadSales(); closeSidebar()"><i class="fas fa-receipt"></i> Historique</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showExpenses(); closeSidebar()"><i class="fas fa-money-bill-wave"></i> Depenses</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showTransfer(); closeSidebar()"><i class="fas fa-exchange-alt"></i> Transfert stock</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="loadVendors(); closeSidebar()"><i class="fas fa-users"></i> Vendeurs</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showExport(); closeSidebar()"><i class="fas fa-download"></i> Export</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showCalculatorPage(); closeSidebar()"><i class="fas fa-calculator"></i> Calculatrice</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showMiniGame(); closeSidebar()"><i class="fas fa-gamepad"></i> Mini-jeu</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showAI(); closeSidebar()"><i class="fas fa-microchip"></i> IA</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="loadInvoices(); closeSidebar()"><i class="fas fa-file-invoice"></i> Factures</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="showInvoiceConfig(); closeSidebar()"><i class="fas fa-file-invoice"></i> Config facture</button></div>
+        <div class="nav-item"><button class="nav-btn" onclick="logout(); closeSidebar()"><i class="fas fa-sign-out-alt"></i> Deconnexion</button></div>
+    </nav>
+</div>
+
+<div class="main-content">
+    <div class="top-bar">
+        <div class="shop-selector">
+            <i class="fas fa-store"></i>
+            <select id="shopSelect" onchange="changeShop()"></select>
+        </div>
+        <div id="shopInfo" style="font-size:0.85rem;"></div>
+        <div class="theme-selector" id="themeSelector">
+            <div class="theme-btn theme-light" onclick="setTheme('light')" title="Clair"></div>
+            <div class="theme-btn theme-dark" onclick="setTheme('dark')" title="Sombre"></div>
+            <div class="theme-btn theme-blue" onclick="setTheme('blue')" title="Bleu"></div>
+            <div class="theme-btn theme-pink" onclick="setTheme('pink')" title="Rose"></div>
+            <div class="theme-btn theme-green" onclick="setTheme('green')" title="Vert"></div>
+            <div class="theme-btn theme-purple" onclick="setTheme('purple')" title="Violet"></div>
+        </div>
+    </div>
+    <div id="content"><div class="loading-mascot">🛒<br>Chargement...</div></div>
+</div>
+
+<div class="mascot" id="mascot">🦉</div>
+<div class="mascot-bubble" id="mascotBubble">👋 Besoin d'aide ?</div>
+
+<script>
+    let token = localStorage.getItem('token');
+    let currentShopId = localStorage.getItem('currentShopId');
+    let currentShopName = localStorage.getItem('currentShopName');
+    let charts = {};
+    let currency = localStorage.getItem('currency') || 'FCFA';
+    let productsCache = [];
+
+    if (!token) window.location.href = '/auth.html';
+    if (currentShopName) document.getElementById('shopInfo').innerHTML = `<i class="fas fa-check-circle"></i> ${currentShopName}`;
+
+    // ========== THEMES ==========
+    function setTheme(theme) {
+        document.body.className = `theme-${theme}`;
+        localStorage.setItem('theme', theme);
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.theme-${theme}`).classList.add('active');
+    }
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+
+    // ========== MASCOTTE ==========
+    const mascot = document.getElementById('mascot');
+    const mascotBubble = document.getElementById('mascotBubble');
+    let mascotMessages = [
+        "👋 Besoin d'aide ?", "📊 Consultez votre dashboard !", "💰 Nouvelle vente ?",
+        "📦 Gerez vos stocks", "👥 Ajoutez des vendeurs", "🎮 Envie d'un jeu ?"
+    ];
+    let msgIndex = 0;
+    setInterval(() => {
+        msgIndex = (msgIndex + 1) % mascotMessages.length;
+        mascotBubble.textContent = mascotMessages[msgIndex];
+        mascotBubble.style.display = 'block';
+        setTimeout(() => mascotBubble.style.display = 'none', 3000);
+    }, 15000);
+    mascot.onclick = () => {
+        mascotBubble.style.display = 'block';
+        setTimeout(() => mascotBubble.style.display = 'none', 3000);
+    };
+
+    function closeSidebar() { if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open'); }
+    document.getElementById('menuToggle').onclick = () => document.getElementById('sidebar').classList.toggle('open');
+
+    async function apiCall(endpoint, options = {}) {
+        try {
+            const res = await fetch(endpoint, { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...options.headers } });
+            if (res.status === 401) { localStorage.clear(); window.location.href = '/auth.html'; return null; }
+            return res.json();
+        } catch (error) { showToast('Erreur de connexion', 'error'); return null; }
+    }
+
+    function showToast(msg, type = 'success') {
+        const toast = document.createElement('div'); toast.className = 'toast';
+        toast.style.background = type === 'success' ? '#1e3a1e' : '#c0392b';
+        toast.innerHTML = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    async function loadShops() {
+        const shops = await apiCall('/api/shops');
+        const select = document.getElementById('shopSelect');
+        select.innerHTML = '<option value="">-- Selectionner --</option>';
+        shops.forEach(s => { select.innerHTML += `<option value="${s.id}" ${currentShopId == s.id ? 'selected' : ''}>${s.name}</option>`; });
+        if (!currentShopId && shops.length > 0) {
+            currentShopId = shops[0].id; currentShopName = shops[0].name;
+            localStorage.setItem('currentShopId', currentShopId);
+            localStorage.setItem('currentShopName', currentShopName);
+            document.getElementById('shopInfo').innerHTML = `<i class="fas fa-check-circle"></i> ${currentShopName}`;
+            loadDashboard();
+        }
+        return shops;
+    }
+
+    function changeShop() {
+        const select = document.getElementById('shopSelect');
+        currentShopId = parseInt(select.value);
+        currentShopName = select.options[select.selectedIndex]?.text || '';
+        localStorage.setItem('currentShopId', currentShopId);
+        localStorage.setItem('currentShopName', currentShopName);
+        document.getElementById('shopInfo').innerHTML = `<i class="fas fa-check-circle"></i> ${currentShopName}`;
+        showToast(`Boutique ${currentShopName} selectionnee`);
+        loadDashboard();
+    }
+
+    // ========== DASHBOARD ==========
+    async function loadDashboard() {
+        if (!currentShopId) { await loadShops(); if (!currentShopId) { document.getElementById('content').innerHTML = '<div class="card"><button class="btn-primary" onclick="showCreateShop()">Creer une boutique</button></div>'; return; } }
+        const stats = await apiCall(`/api/dashboard/stats?shopId=${currentShopId}`);
+        if (!stats) return;
+
+        let evolutionClass = stats.salesEvolution >= 0 ? 'positive' : 'negative';
+        let evolutionSign = stats.salesEvolution >= 0 ? '+' : '';
+
+        let html = `<div class="stats-grid">
+            <div class="stat-card"><div class="stat-value">${stats.dailySales}</div><div>Ventes aujourd'hui</div><div class="stat-evolution ${evolutionClass}">${evolutionSign}${stats.salesEvolution.toFixed(1)}% vs hier</div></div>
+            <div class="stat-card"><div class="stat-value">${stats.yesterdaySales}</div><div>Ventes hier</div></div>
+            <div class="stat-card"><div class="stat-value">${stats.weeklySales}</div><div>Ventes (7j)</div></div>
+            <div class="stat-card"><div class="stat-value">${stats.monthlySales}</div><div>Ventes totales</div></div>
+            <div class="stat-card"><div class="stat-value">${(stats.revenue || 0).toLocaleString()} ${currency}</div><div>Chiffre d'affaires</div></div>
+            <div class="stat-card"><div class="stat-value">${(stats.totalExpenses || 0).toLocaleString()} ${currency}</div><div>Depenses</div></div>
+            <div class="stat-card"><div class="stat-value">${(stats.netProfit || 0).toLocaleString()} ${currency}</div><div>Benefice net</div></div>
+            <div class="stat-card"><div class="stat-value">${stats.lowStockCount}</div><div>Stock faible</div></div>
+            <div class="stat-card"><div class="stat-value">${stats.outOfStockCount}</div><div>Ruptures</div></div>
+        </div>`;
+
+        if (stats.dailyChart) html += `<div class="card"><canvas id="salesChart"></canvas></div>`;
+        if (stats.topProducts?.length) html += `<div class="card"><h3>Top produits</h3><canvas id="topChart"></canvas></div>`;
+        if (stats.topSellers?.length) html += `<div class="card"><h3>Meilleurs vendeurs</h3><ul>${stats.topSellers.map(s => `<li>${s.name} : ${s.revenue.toLocaleString()} ${currency}</li>`).join('')}</ul></div>`;
+
+        document.getElementById('content').innerHTML = html;
+
+        if (stats.dailyChart && document.getElementById('salesChart')) {
+            if (charts.salesChart) charts.salesChart.destroy();
+            charts.salesChart = new Chart(document.getElementById('salesChart'), { type: 'line', data: { labels: stats.dailyChart.map(d => d.date), datasets: [{ label: 'Ventes', data: stats.dailyChart.map(d => d.count), borderColor: '#6b705c', tension: 0.3, fill: true }] } });
+        }
+        if (stats.topProducts && document.getElementById('topChart')) {
+            if (charts.topChart) charts.topChart.destroy();
+            charts.topChart = new Chart(document.getElementById('topChart'), { type: 'bar', data: { labels: stats.topProducts.map(p => p.name), datasets: [{ label: 'Quantites', data: stats.topProducts.map(p => p.quantitySold), backgroundColor: '#6b705c' }] } });
+        }
+    }
+
+    // ========== BOUTIQUES ==========
+    async function loadShopsList() {
+        const shops = await apiCall('/api/shops');
+        let html = '<div class="card"><h3>Mes boutiques</h3>';
+        shops.forEach(s => { html += `<div class="flex-between border-b py-2"><div><b>${s.name}</b><br><small>${s.address || ''}</small></div><div><button class="btn-primary" onclick="selectShopDirect(${s.id},'${s.name}')" style="margin-right:5px"><i class="fas fa-check"></i> Select</button><button class="btn-danger" onclick="deleteShop(${s.id})"><i class="fas fa-trash"></i></button></div></div>`; });
+        html += `<button class="btn-primary mt-3 w-full" onclick="showCreateShop()">+ Nouvelle boutique</button></div>`;
+        document.getElementById('content').innerHTML = html;
+    }
+
+    function selectShopDirect(id, name) { currentShopId = id; currentShopName = name; localStorage.setItem('currentShopId', id); localStorage.setItem('currentShopName', name); document.getElementById('shopInfo').innerHTML = `<i class="fas fa-check-circle"></i> ${name}`; showToast(`Boutique ${name} selectionnee`); loadDashboard(); }
+    async function deleteShop(id) { if (confirm('Supprimer ?')) { await fetch(`/api/shops/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); loadShopsList(); loadShops(); } }
+    function showCreateShop() { document.getElementById('content').innerHTML = `<div class="card"><h3>Nouvelle boutique</h3><div class="form-group"><label>Nom</label><input id="shopName" class="form-control"></div><div class="form-group"><label>Adresse</label><input id="shopAddress" class="form-control"></div><div class="form-group"><label>Telephone</label><input id="shopPhone" class="form-control"></div><button class="btn-primary" onclick="createShop()">Creer</button></div>`; }
+    async function createShop() { const name = document.getElementById('shopName').value; const address = document.getElementById('shopAddress').value; const phone = document.getElementById('shopPhone').value; if (!name) return showToast('Nom requis', 'error'); await fetch('/api/shops', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ name, address, phone }) }); showToast('Boutique creee'); loadShopsList(); loadShops(); }
+
+    // ========== PRODUITS ==========
+    async function loadProducts() { if (!currentShopId) return showToast('Selectionnez une boutique', 'error'); const prods = await apiCall(`/api/products?shopId=${currentShopId}`); let html = '<div class="card"><div class="flex-between"><h3>Produits</h3><button class="btn-primary" onclick="showCreateProduct()">+ Ajouter</button></div><div class="table-container"><table class="w-full"><thead><tr><th>Nom</th><th>Stock</th><th>Prix</th><th>Arrivage</th><th>Actions</th></tr></thead><tbody>';
+        prods.forEach(p => {
+            html += `<tr><td><b>${p.name}</b></td><td class="${p.quantity <= p.alertThreshold ? 'text-danger' : ''}">${p.quantity}</td><td>${p.sellingPrice.toLocaleString()} ${currency}</td>
+            <td><input type="number" id="restockQty_${p.id}" placeholder="Qty" style="width:70px"><button class="btn-primary" onclick="restockProduct(${p.id})">+</button></td>
+            <td><button class="btn-danger" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button></td></tr>`;
+        });
+        if (prods.length === 0) html += '<tr><td colspan="5" class="text-center">Aucun produit</td></tr>';
+        html += '</tbody></table></div></div>';
+        document.getElementById('content').innerHTML = html;
+    }
+    function showCreateProduct() { document.getElementById('content').innerHTML = `<div class="card"><h3>Nouveau produit</h3><div class="form-row"><div class="form-group"><label>Nom</label><input id="prodName" class="form-control"></div><div class="form-group"><label>Prix vente (${currency})</label><input id="prodPrice" type="number" class="form-control"></div></div><div class="form-row"><div class="form-group"><label>Quantite stock</label><input id="prodQty" type="number" class="form-control"></div><div class="form-group"><label>Seuil alerte</label><input id="prodAlert" type="number" class="form-control" value="5"></div></div><div class="form-group"><label>Code-barres</label><input id="prodBarcode" class="form-control" placeholder="Optionnel"></div><button class="btn-primary w-full" onclick="createProduct()">Creer produit</button></div>`; }
+    async function createProduct() { const name = document.getElementById('prodName').value; const price = parseInt(document.getElementById('prodPrice').value); const qty = parseInt(document.getElementById('prodQty').value); const alertTh = parseInt(document.getElementById('prodAlert').value) || 5; const barcode = document.getElementById('prodBarcode').value; if (!name) return showToast('Nom requis', 'error'); await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ name, sellingPrice: price, quantity: qty, alertThreshold: alertTh, shopId: currentShopId, barcode }) }); showToast('Produit ajoute'); loadProducts(); }
+    async function deleteProduct(id) { if (confirm('Supprimer ?')) { await fetch(`/api/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); loadProducts(); } }
+    async function restockProduct(id) {
+        const qty = document.getElementById(`restockQty_${id}`).value;
+        if (!qty || qty<=0) return showToast("Quantité invalide","error");
+        const res = await fetch(`/api/products/${id}/restock`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ quantity: parseInt(qty) }) });
+        if (res.ok) { showToast("Stock ajouté"); loadProducts(); } else showToast("Erreur","error");
+    }
+
+    // ========== VENTES ==========
+    async function loadProductsForSale() {
+        productsCache = await apiCall(`/api/products?shopId=${currentShopId}`);
+        return productsCache;
+    }
+
+    function filterProducts(search) {
+        const term = search.toLowerCase();
+        return productsCache.filter(p => p.name.toLowerCase().includes(term) || (p.barcode && p.barcode.includes(term)));
+    }
+
+    let saleCalculatorVisible = false;
+
+    async function showSale() {
+        await loadProductsForSale();
+        let productsHtml = '<option value="">-- Choisir un produit --</option>';
+        productsCache.forEach(p => { productsHtml += `<option value="${p.id}" data-price="${p.sellingPrice}" data-name="${p.name}" data-stock="${p.quantity}">${p.name} - ${p.sellingPrice} ${currency} (Stock: ${p.quantity})</option>`; });
+
+        document.getElementById('content').innerHTML = `
+            <div class="card">
+                <div class="card-header"><h3><i class="fas fa-cash-register"></i> Enregistrer une vente</h3></div>
+                <div class="barcode-scanner" id="scannerBtn"><i class="fas fa-camera"></i> Scanner un code-barres</div>
+                <div class="form-group">
+                    <label>Produit</label>
+                    <div class="autocomplete-container">
+                        <input id="productSearch" class="form-control" placeholder="Rechercher par nom ou code-barres..." oninput="filterProductList()">
+                        <div id="autocompleteList" class="autocomplete-dropdown"></div>
+                    </div>
+                    <select id="saleProduct" class="form-control mt-2" onchange="updateProductInfo()" style="display:none">${productsHtml}</select>
+                </div>
+                <div id="productInfo" class="alert-info" style="display:none; padding:10px; background:#d4edda; border-radius:12px; margin-bottom:15px;"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Quantite</label><input id="saleQty" type="number" class="form-control" value="1" min="1" onchange="calculateSaleTotal()"></div>
+                    <div class="form-group"><label>Prix unitaire (${currency})</label><input id="salePrice" type="number" class="form-control" oninput="calculateSaleTotal()"></div>
+                </div>
+                <div class="form-group"><label>Nom du client</label><input id="customerName" class="form-control" placeholder="Client"></div>
+                <div class="form-group"><label>Total</label><input id="saleTotal" class="form-control" readonly style="font-weight:bold; font-size:1.2rem"></div>
+                <div id="priceAlert" style="display:none" class="alert-warning-custom"></div>
+                <button class="btn-primary w-full" onclick="recordSaleWithPrice()"><i class="fas fa-check"></i> Vendre</button>
+                <div id="performanceMessage" style="display:none" class="performance-card"></div>
+                <button class="btn-secondary w-full mt-2" onclick="toggleSaleCalculator()"><i class="fas fa-calculator"></i> ${saleCalculatorVisible ? 'Masquer' : 'Afficher'} calculatrice</button>
+                <div id="saleCalculator" style="display:${saleCalculatorVisible ? 'block' : 'none'}" class="calculator mt-2">
+                    <div class="calculator-display" id="calcDisplaySale">0</div>
+                    <div class="calculator-buttons">
+                        <button class="calc-btn" onclick="calcAppendSale('7')">7</button><button class="calc-btn" onclick="calcAppendSale('8')">8</button><button class="calc-btn" onclick="calcAppendSale('9')">9</button><button class="calc-btn calc-btn-op" onclick="calcOperationSale('/')">÷</button>
+                        <button class="calc-btn" onclick="calcAppendSale('4')">4</button><button class="calc-btn" onclick="calcAppendSale('5')">5</button><button class="calc-btn" onclick="calcAppendSale('6')">6</button><button class="calc-btn calc-btn-op" onclick="calcOperationSale('*')">×</button>
+                        <button class="calc-btn" onclick="calcAppendSale('1')">1</button><button class="calc-btn" onclick="calcAppendSale('2')">2</button><button class="calc-btn" onclick="calcAppendSale('3')">3</button><button class="calc-btn calc-btn-op" onclick="calcOperationSale('-')">-</button>
+                        <button class="calc-btn" onclick="calcAppendSale('0')">0</button><button class="calc-btn" onclick="calcAppendSale('.')">.</button><button class="calc-btn" onclick="calcClearSale()">C</button><button class="calc-btn calc-btn-op" onclick="calcOperationSale('+')">+</button>
+                        <button class="calc-btn calc-btn-op" style="grid-column: span 4;" onclick="calcEqualSale()">=</button>
+                    </div>
+                </div>
+            </div>`;
+        setupScanner();
+        updateProductInfo();
+    }
+
+    function filterProductList() {
+        const search = document.getElementById('productSearch').value;
+        const filtered = filterProducts(search);
+        const listDiv = document.getElementById('autocompleteList');
+        if (filtered.length === 0 || search === '') { listDiv.style.display = 'none'; return; }
+        listDiv.style.display = 'block';
+        listDiv.innerHTML = filtered.map(p => `<div class="autocomplete-item" onclick="selectProduct(${p.id}, '${p.name}', ${p.sellingPrice}, ${p.quantity})">${p.name} - ${p.sellingPrice} ${currency} (Stock: ${p.quantity})</div>`).join('');
+    }
+
+    function selectProduct(id, name, price, stock) {
+        document.getElementById('productSearch').value = name;
+        document.getElementById('autocompleteList').style.display = 'none';
+        const select = document.getElementById('saleProduct');
+        select.value = id;
+        updateProductInfo();
+    }
+
+    function updateProductInfo() {
+        const select = document.getElementById('saleProduct');
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const price = selectedOption.dataset.price;
+            const name = selectedOption.dataset.name;
+            const stock = selectedOption.dataset.stock;
+            document.getElementById('productSearch').value = name;
+            document.getElementById('productInfo').innerHTML = `<i class="fas fa-info-circle"></i> ${name} - Prix recommande: ${price} ${currency} - Stock: ${stock}`;
+            document.getElementById('productInfo').style.display = 'block';
+            document.getElementById('salePrice').value = price;
+            calculateSaleTotal();
+        }
+    }
+
+    function calculateSaleTotal() {
+        const qty = parseFloat(document.getElementById('saleQty').value) || 0;
+        const price = parseFloat(document.getElementById('salePrice').value) || 0;
+        const total = qty * price;
+        document.getElementById('saleTotal').value = total.toLocaleString() + ' ' + currency;
+        checkSalePrice();
+    }
+
+    function checkSalePrice() {
+        const select = document.getElementById('saleProduct');
+        const selectedOption = select.options[select.selectedIndex];
+        const alertDiv = document.getElementById('priceAlert');
+        if (selectedOption && selectedOption.value) {
+            const recommended = parseInt(selectedOption.dataset.price);
+            const entered = parseInt(document.getElementById('salePrice').value) || 0;
+            if (entered > recommended) {
+                alertDiv.innerHTML = `<i class="fas fa-smile-wink"></i> Waouh! +${entered-recommended} ${currency} au-dessus du prix!`;
+                alertDiv.style.display = 'block';
+                alertDiv.style.background = '#d4edda';
+                alertDiv.style.color = '#155724';
+            } else if (entered < recommended) {
+                alertDiv.innerHTML = `<i class="fas fa-frown"></i> Attention: ${recommended-entered} ${currency} en dessous du prix recommande`;
+                alertDiv.style.display = 'block';
+                alertDiv.style.background = '#fff3cd';
+                alertDiv.style.color = '#856404';
+            } else {
+                alertDiv.style.display = 'none';
+            }
+        }
+    }
+
+    function setupScanner() {
+        document.getElementById('scannerBtn').onclick = () => {
+            const code = prompt("Entrez le code-barres du produit:");
+            if (code) {
+                const product = productsCache.find(p => p.barcode === code);
+                if (product) {
+                    document.getElementById('productSearch').value = product.name;
+                    document.getElementById('saleProduct').value = product.id;
+                    updateProductInfo();
+                    showToast(`Produit trouve: ${product.name}`);
+                } else showToast('Produit non trouve', 'error');
+            }
+        };
+    }
+
+    let saleCalcValue = '', saleCalcOperator = '', saleCalcPrevious = '';
+    function calcAppendSale(num) { saleCalcValue += num; document.getElementById('calcDisplaySale').innerText = saleCalcValue; }
+    function calcClearSale() { saleCalcValue = ''; saleCalcOperator = ''; saleCalcPrevious = ''; document.getElementById('calcDisplaySale').innerText = '0'; }
+    function calcOperationSale(op) { if (saleCalcValue) { saleCalcPrevious = saleCalcValue; saleCalcValue = ''; saleCalcOperator = op; } }
+    function calcEqualSale() {
+        if (saleCalcPrevious && saleCalcValue && saleCalcOperator) {
+            let result = 0; const a = parseFloat(saleCalcPrevious); const b = parseFloat(saleCalcValue);
+            if (saleCalcOperator === '+') result = a + b;
+            else if (saleCalcOperator === '-') result = a - b;
+            else if (saleCalcOperator === '*') result = a * b;
+            else if (saleCalcOperator === '/') result = a / b;
+            document.getElementById('calcDisplaySale').innerText = result;
+            document.getElementById('salePrice').value = Math.round(result);
+            saleCalcValue = result.toString(); saleCalcPrevious = ''; calculateSaleTotal();
+        }
+    }
+    function toggleSaleCalculator() { saleCalculatorVisible = !saleCalculatorVisible; document.getElementById('saleCalculator').style.display = saleCalculatorVisible ? 'block' : 'none'; }
+
+    async function recordSaleWithPrice() {
+        const select = document.getElementById('saleProduct');
+        if (!select.value) { showToast('Selectionnez un produit', 'error'); return; }
+        const productId = parseInt(select.value);
+        const quantity = parseInt(document.getElementById('saleQty').value);
+        const customPrice = parseInt(document.getElementById('salePrice').value);
+        const customerName = document.getElementById('customerName').value || 'Client';
+        const res = await fetch('/api/sales', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ productId, quantity, shopId: currentShopId, customPrice, customerName }) });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`Vente enregistree! ${quantity} x ${customPrice} = ${quantity*customPrice} ${currency}`);
+            if (data.performanceMessage) document.getElementById('performanceMessage').innerHTML = data.performanceMessage;
+            loadDashboard();
+        } else showToast(data.error, 'error');
+    }
+
+    // ========== HISTORIQUE ==========
+    async function loadSales() {
+        if (!currentShopId) return showToast('Selectionnez une boutique', 'error');
+        const salesList = await apiCall(`/api/sales?shopId=${currentShopId}`);
+        let html = '<div class="card"><h3>Historique des ventes</h3><div class="table-container"><table class="w-full"><thead><tr><th>Date</th><th>Client</th><th>Produit</th><th>Vendeur</th><th>Qte</th><th>Total</th><th>PDF</th><th>Annuler</th></tr></thead><tbody>';
+        salesList.forEach(s => { html += `<tr><td class="whitespace-nowrap">${new Date(s.date).toLocaleString()}</td><td>${s.customerName || '-'}</td><td>${s.productName}</td><td>${s.sellerName || '-'}</td><td>${s.quantity}</td><td>${s.total.toLocaleString()} ${currency}</td><td><button onclick="downloadPDF(${s.id})" class="btn-secondary">PDF</button></td><td><button class="btn-danger" onclick="cancelSale(${s.id})"><i class="fas fa-times"></i></button></td></tr>`; });
+        if (salesList.length === 0) html += '<tr><td colspan="8" class="text-center">Aucune vente</td></tr>';
+        html += '</tbody></table></div></div>';
+        document.getElementById('content').innerHTML = html;
+    }
+    async function cancelSale(id) { if (confirm('Annuler cette vente ? (stock restaure)')) { const res = await fetch(`/api/sales/${id}/cancel`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); if (res.ok) { showToast('Vente annulee'); loadSales(); loadDashboard(); } else { const err = await res.json(); showToast(err.error, 'error'); } } }
+
+    // ========== FACTURES ==========
+    async function loadInvoices() {
+        if (!currentShopId) return showToast('Selectionnez une boutique','error');
+        const invoicesData = await apiCall(`/api/invoices?shopId=${currentShopId}`);
+        let html = `<div class="card"><h3>Factures</h3><div class="table-container"><table class="w-full"><thead><tr><th>N° Facture</th><th>Date</th><th>Client</th><th>Total</th><th>PDF</th></tr></thead><tbody>`;
+        invoicesData.forEach(inv => {
+            html += `<tr><td>${inv.invoiceNumber}</td><td>${new Date(inv.createdAt).toLocaleDateString()}</td><td>${inv.sale?.customerName || "-"}</td><td>${inv.total.toLocaleString()} ${currency}</td><td><button onclick="downloadPDF(${inv.saleId})" class="btn-secondary">PDF</button></td></tr>`;
+        });
+        if (invoicesData.length===0) html += '<tr><td colspan="5" class="text-center">Aucune facture</td></tr>';
+        html += '</tbody></table></div></div>';
+        document.getElementById('content').innerHTML = html;
+    }
+
+    // ========== TELECHARGEMENT PDF ==========
+    function downloadPDF(saleId) {
+        fetch(`/api/invoices/${saleId}/pdf`, { headers: { "Authorization": `Bearer ${token}` } })
+            .then(res => res.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `facture_${saleId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(url);
+            })
+            .catch(err => showToast("Erreur PDF", "error"));
+    }
+
+    // ========== DEPENSES ==========
+    async function showExpenses() {
+        if (!currentShopId) return showToast('Selectionnez une boutique', 'error');
+        const expenses = await apiCall(`/api/expenses?shopId=${currentShopId}`);
+        let html = `<div class="card"><div class="flex-between"><h3>Depenses</h3><button class="btn-primary" onclick="showAddExpense()">+ Ajouter</button></div><div class="table-container"><table class="w-full"><thead><tr><th>Date</th><th>Categorie</th><th>Montant</th><th>Description</th><th></th></tr></thead><tbody>`;
+        expenses.forEach(e => {
+            html += `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.category}</td><td>${e.amount.toLocaleString()} ${currency}</td><td>${e.description || '-'}</td><td><button class="btn-danger" onclick="deleteExpense(${e.id})"><i class="fas fa-trash"></i></button></td></tr>`;
+        });
+        if (expenses.length === 0) html += '<tr><td colspan="5" class="text-center">Aucune depense</td></tr>';
+        html += '</tbody></table></div></div>';
+        document.getElementById('content').innerHTML = html;
+    }
+    function showAddExpense() {
+        document.getElementById('content').innerHTML = `
+            <div class="card"><h3>Ajouter depense</h3>
+            <div class="form-group"><label>Categorie</label>
+            <select id="expenseCat" class="form-control">
+                <option value="Electricite">Electricite</option>
+                <option value="Loyer">Loyer</option>
+                <option value="Salaire">Salaire</option>
+                <option value="Stock">Stock</option>
+                <option value="Transport">Transport</option>
+                <option value="Autre">Autre</option>
+            </select></div>
+            <div id="otherCategoryDiv" style="display:none">
+                <div class="form-group"><label>Precisez la categorie</label>
+                <input id="otherCategory" class="form-control" placeholder="Categorie"></div>
+            </div>
+            <div class="form-group"><label>Montant (${currency})</label>
+            <input id="expenseAmount" type="number" class="form-control"></div>
+            <div class="form-group"><label>Date</label>
+            <input id="expenseDate" type="date" class="form-control"></div>
+            <div class="form-group"><label>Description</label>
+            <textarea id="expenseDesc" class="form-control" rows="2" placeholder="Details supplementaires..."></textarea></div>
+            <button class="btn-primary w-full" onclick="addExpense()">Ajouter</button></div>
+            <script>document.getElementById('expenseCat').onchange = function(){ document.getElementById('otherCategoryDiv').style.display = this.value === 'Autre' ? 'block' : 'none'; }<\/script>`;
+    }
+    async function addExpense() { let category = document.getElementById('expenseCat').value; if (category === 'Autre') category = document.getElementById('otherCategory').value; const amount = parseInt(document.getElementById('expenseAmount').value); const date = document.getElementById('expenseDate').value || new Date().toISOString().split('T')[0]; const description = document.getElementById('expenseDesc').value; await fetch('/api/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ category, amount, date, description, shopId: currentShopId }) }); showToast('Depense ajoutee'); showExpenses(); loadDashboard(); }
+    async function deleteExpense(id) { if (confirm('Supprimer ?')) { await fetch(`/api/expenses/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); showExpenses(); loadDashboard(); } }
+
+    // ========== TRANSFERT STOCK ==========
+    async function showTransfer() {
+        const shops = await apiCall('/api/shops');
+        const prods = await apiCall(`/api/products?shopId=${currentShopId}`);
+        let shopsHtml = '<option value="">-- Choisir --</option>';
+        shops.forEach(s => { shopsHtml += `<option value="${s.id}">${s.name}</option>`; });
+        let prodsHtml = '<option value="">-- Choisir --</option>';
+        prods.forEach(p => { prodsHtml += `<option value="${p.id}">${p.name} (Stock: ${p.quantity})</option>`; });
+        document.getElementById('content').innerHTML = `<div class="card"><h3>Transfert de stock</h3><div class="form-group"><label>Boutique source</label><select id="fromShop" class="form-control">${shopsHtml}</select></div><div class="form-group"><label>Boutique destination</label><select id="toShop" class="form-control">${shopsHtml}</select></div><div class="form-group"><label>Produit</label><select id="transferProduct" class="form-control">${prodsHtml}</select></div><div class="form-group"><label>Quantite</label><input id="transferQty" type="number" class="form-control"></div><button class="btn-primary w-full" onclick="doTransfer()">Transférer</button></div>`;
+    }
+    async function doTransfer() {
+        const fromShopId = parseInt(document.getElementById('fromShop').value);
+        const toShopId = parseInt(document.getElementById('toShop').value);
+        const productId = parseInt(document.getElementById('transferProduct').value);
+        const quantity = parseInt(document.getElementById('transferQty').value);
+        const res = await fetch('/api/transfer-stock', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ fromShopId, toShopId, productId, quantity }) });
+        if (res.ok) { showToast('Transfert effectue'); if (toShopId == currentShopId || fromShopId == currentShopId) loadProducts(); } else showToast('Erreur', 'error');
+    }
+
+    // ========== VENDEURS ==========
+    async function loadVendors() { if (!currentShopId) return showToast('Selectionnez une boutique', 'error'); const vendors = await apiCall(`/api/vendors?shopId=${currentShopId}`); let html = `<div class="card"><div class="flex-between"><h3>Vendeurs</h3><button class="btn-primary" onclick="showInviteVendor()">+ Inviter</button></div><div class="table-container"><table class="w-full"><thead><tr><th>Nom</th><th>Email</th><th>Tel</th><th>CNI</th><th>Adresse</th><th>Commission</th><th></th></tr></thead><tbody>`;
+        vendors.forEach(v => { html += `<tr><td>${v.fullName}</td><td>${v.email}</td><td>${v.phone || '-'}</td><td>${v.cni || '-'}</td><td>${v.address || '-'}</td><td>${v.commission}%</td><td><button class="btn-danger" onclick="deleteVendor(${v.id})"><i class="fas fa-trash"></i></button></td></tr>`; });
+        if (vendors.length === 0) html += '<tr><td colspan="7" class="text-center">Aucun vendeur</td></tr>';
+        html += '</tbody></table></div></div>';
+        document.getElementById('content').innerHTML = html;
+    }
+    function showInviteVendor() { document.getElementById('content').innerHTML = `<div class="card"><h3>Inviter vendeur</h3><div class="form-row"><div class="form-group"><label>Nom complet</label><input id="vendorName" class="form-control"></div><div class="form-group"><label>Email</label><input id="vendorEmail" class="form-control"></div></div><div class="form-row"><div class="form-group"><label>Telephone</label><input id="vendorPhone" class="form-control"></div><div class="form-group"><label>CNI</label><input id="vendorCni" class="form-control"></div></div><div class="form-group"><label>Adresse</label><textarea id="vendorAddress" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Commission (%)</label><input id="vendorCommission" type="number" class="form-control"></div><button class="btn-primary w-full" onclick="inviteVendor()">Inviter</button></div>`; }
+    async function inviteVendor() { const fullName = document.getElementById('vendorName').value; const email = document.getElementById('vendorEmail').value; const phone = document.getElementById('vendorPhone').value; const cni = document.getElementById('vendorCni').value; const address = document.getElementById('vendorAddress').value; const commission = parseInt(document.getElementById('vendorCommission').value) || 0; const res = await fetch('/api/vendors', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ email, fullName, phone, cni, address, commission, shopId: currentShopId }) }); const data = await res.json(); if (res.ok) showToast(data.message); else showToast(data.error, 'error'); loadVendors(); }
+    async function deleteVendor(id) { if (confirm('Supprimer ce vendeur ?')) { await fetch(`/api/vendors/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); loadVendors(); } }
+
+    // ========== EXPORT ==========
+    function showExport() { if (!currentShopId) return showToast('Selectionnez une boutique', 'error'); document.getElementById('content').innerHTML = `<div class="card"><h3>Export donnees</h3><div class="grid-cols-2"><button class="btn-primary w-full" onclick="window.open('/api/export/sales?shopId=${currentShopId}&format=csv')"><i class="fas fa-file-csv"></i> Ventes CSV</button><button class="btn-primary w-full" onclick="window.open('/api/export/sales?shopId=${currentShopId}&format=xlsx')"><i class="fas fa-file-excel"></i> Ventes Excel</button><button class="btn-primary w-full" onclick="window.open('/api/export/products?shopId=${currentShopId}&format=csv')"><i class="fas fa-file-csv"></i> Produits CSV</button><button class="btn-primary w-full" onclick="window.open('/api/export/products?shopId=${currentShopId}&format=xlsx')"><i class="fas fa-file-excel"></i> Produits Excel</button><button class="btn-primary w-full" onclick="window.open('/api/export/expenses?shopId=${currentShopId}&format=csv')"><i class="fas fa-file-csv"></i> Depenses CSV</button><button class="btn-primary w-full" onclick="window.open('/api/export/expenses?shopId=${currentShopId}&format=xlsx')"><i class="fas fa-file-excel"></i> Depenses Excel</button></div></div>`; }
+
+    // ========== CALCULATRICE PAGE ==========
+    let calcValue = '', calcOperator = '', calcPrevious = '';
+    function showCalculatorPage() { document.getElementById('content').innerHTML = `<div class="card"><h3><i class="fas fa-calculator"></i> Calculatrice</h3><div class="calculator"><div class="calculator-display" id="calcDisplayMain">0</div><div class="calculator-buttons"><button class="calc-btn" onclick="calcAppendMain('7')">7</button><button class="calc-btn" onclick="calcAppendMain('8')">8</button><button class="calc-btn" onclick="calcAppendMain('9')">9</button><button class="calc-btn calc-btn-op" onclick="calcOperationMain('/')">÷</button><button class="calc-btn" onclick="calcAppendMain('4')">4</button><button class="calc-btn" onclick="calcAppendMain('5')">5</button><button class="calc-btn" onclick="calcAppendMain('6')">6</button><button class="calc-btn calc-btn-op" onclick="calcOperationMain('*')">×</button><button class="calc-btn" onclick="calcAppendMain('1')">1</button><button class="calc-btn" onclick="calcAppendMain('2')">2</button><button class="calc-btn" onclick="calcAppendMain('3')">3</button><button class="calc-btn calc-btn-op" onclick="calcOperationMain('-')">-</button><button class="calc-btn" onclick="calcAppendMain('0')">0</button><button class="calc-btn" onclick="calcAppendMain('.')">.</button><button class="calc-btn" onclick="calcClearMain()">C</button><button class="calc-btn calc-btn-op" onclick="calcOperationMain('+')">+</button><button class="calc-btn calc-btn-op" style="grid-column: span 4;" onclick="calcEqualMain()">=</button></div></div></div>`; }
+    function calcAppendMain(num) { calcValue += num; document.getElementById('calcDisplayMain').innerText = calcValue; }
+    function calcClearMain() { calcValue = ''; calcOperator = ''; calcPrevious = ''; document.getElementById('calcDisplayMain').innerText = '0'; }
+    function calcOperationMain(op) { if (calcValue) { calcPrevious = calcValue; calcValue = ''; calcOperator = op; } }
+    function calcEqualMain() { if (calcPrevious && calcValue && calcOperator) { let result = 0; const a = parseFloat(calcPrevious); const b = parseFloat(calcValue); if (calcOperator === '+') result = a + b; else if (calcOperator === '-') result = a - b; else if (calcOperator === '*') result = a * b; else if (calcOperator === '/') result = a / b; document.getElementById('calcDisplayMain').innerText = result; calcValue = result.toString(); calcPrevious = ''; } }
+
+    // ========== MINI-JEU ==========
+    let gameCards = [], gameFlipped = [], gameMatched = [];
+    function showMiniGame() {
+        const emojis = ['🛒', '📦', '💰', '📊', '👥', '🏪', '🤖', '🎮'];
+        gameCards = [...emojis, ...emojis];
+        for (let i = gameCards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [gameCards[i], gameCards[j]] = [gameCards[j], gameCards[i]]; }
+        gameFlipped = new Array(gameCards.length).fill(false);
+        gameMatched = new Array(gameCards.length).fill(false);
+        let html = `<div class="card"><h3><i class="fas fa-gamepad"></i> Memory Game</h3><p>Trouvez les paires !</p><div class="memory-game" id="memoryGame">`;
+        gameCards.forEach((card, i) => { html += `<div class="memory-card ${gameMatched[i] ? 'matched' : ''}" data-idx="${i}" onclick="flipCard(${i})">${gameFlipped[i] || gameMatched[i] ? card : '?'}</div>`; });
+        html += `</div><button class="btn-primary mt-3" onclick="showMiniGame()">Nouvelle partie</button></div>`;
+        document.getElementById('content').innerHTML = html;
+    }
+    function flipCard(idx) { if (gameMatched[idx] || gameFlipped[idx]) return; gameFlipped[idx] = true; updateGameDisplay(); const flippedIndices = gameFlipped.map((f, i) => f && !gameMatched[i] ? i : -1).filter(i => i !== -1); if (flippedIndices.length === 2) { setTimeout(() => { if (gameCards[flippedIndices[0]] === gameCards[flippedIndices[1]]) { gameMatched[flippedIndices[0]] = true; gameMatched[flippedIndices[1]] = true; } gameFlipped[flippedIndices[0]] = false; gameFlipped[flippedIndices[1]] = false; updateGameDisplay(); }, 500); } }
+    function updateGameDisplay() { const container = document.getElementById('memoryGame'); if (!container) return; const cards = container.children; for (let i = 0; i < cards.length; i++) { if (gameMatched[i]) cards[i].innerHTML = gameCards[i]; else if (gameFlipped[i]) cards[i].innerHTML = gameCards[i]; else cards[i].innerHTML = '?'; } }
+
+    // ========== IA ==========
+    let chatHistory = [];
+    function showAI() { document.getElementById('content').innerHTML = `<div class="card"><h3><i class="fas fa-microchip"></i> Assistant IA</h3><div class="ai-chat" id="chatContainer" style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;"></div><div class="suggestions" id="suggestions"></div><div class="flex mt-3"><input id="aiQuestion" class="form-control" placeholder="Posez votre question..." onkeypress="if(event.key==='Enter') askAI()"><button class="btn-primary ml-2" onclick="askAI()"><i class="fas fa-paper-plane"></i></button></div></div>`; chatHistory = []; addBotMessage("Bonjour! Je suis votre assistant IA. Je peux repondre a vos questions sur les ventes, produits, vendeurs, depenses, etc. Comment puis-je vous aider?"); updateSuggestions(); }
+    function addUserMessage(msg) { const container = document.getElementById('chatContainer'); const div = document.createElement('div'); div.className = 'chat-message user'; div.innerHTML = `<div class="chat-bubble">${msg}</div>`; container.appendChild(div); container.scrollTop = container.scrollHeight; }
+    function addBotMessage(msg) { const container = document.getElementById('chatContainer'); const div = document.createElement('div'); div.className = 'chat-message bot'; div.innerHTML = `<div class="chat-bubble">${msg.replace(/\n/g,'<br>')}</div>`; container.appendChild(div); container.scrollTop = container.scrollHeight; }
+    function addThinking() { const container = document.getElementById('chatContainer'); const div = document.createElement('div'); div.className = 'chat-message bot'; div.id = 'thinkingMsg'; div.innerHTML = `<div class="chat-bubble"><div class="thinking"><span></span><span></span><span></span></div></div>`; container.appendChild(div); container.scrollTop = container.scrollHeight; }
+    function removeThinking() { const el = document.getElementById('thinkingMsg'); if (el) el.remove(); }
+    function updateSuggestions() { const suggestionsDiv = document.getElementById('suggestions'); if (!suggestionsDiv) return; suggestionsDiv.innerHTML = `<button class="suggestion-btn" onclick="askSuggestion('Combien de ventes aujourd'hui ?')">Ventes aujourd'hui</button><button class="suggestion-btn" onclick="askSuggestion('Combien de ventes hier ?')">Ventes hier</button><button class="suggestion-btn" onclick="askSuggestion('Quel est le produit le plus vendu ?')">Top produit</button><button class="suggestion-btn" onclick="askSuggestion('Quel est le meilleur vendeur ?')">Meilleur vendeur</button><button class="suggestion-btn" onclick="askSuggestion('Faut-il commander du stock ?')">Stock</button><button class="suggestion-btn" onclick="askSuggestion('Quel est mon benefice ?')">Benefice</button><button class="suggestion-btn" onclick="askSuggestion('Prediction pour demain ?')">Prediction</button>`; }
+    function askSuggestion(question) { document.getElementById('aiQuestion').value = question; askAI(); }
+    async function askAI() { const question = document.getElementById('aiQuestion').value; if (!question) return; addUserMessage(question); document.getElementById('aiQuestion').value = ''; addThinking(); try { const res = await fetch('/api/ai/ask', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ question, shopId: currentShopId, conversationHistory: chatHistory }) }); const data = await res.json(); removeThinking(); addBotMessage(data.answer); chatHistory.push({ role: 'user', content: question }); chatHistory.push({ role: 'assistant', content: data.answer }); } catch (error) { removeThinking(); addBotMessage("Desole, une erreur s'est produite."); } }
+
+    // ========== CONFIG FACTURE ==========
+    function showInvoiceConfig() { document.getElementById('content').innerHTML = `<div class="card"><h3>Configuration facture</h3><div class="form-group"><label>Nom entreprise</label><input id="companyName" class="form-control"></div><div class="form-group"><label>Adresse</label><input id="companyAddress" class="form-control"></div><div class="form-group"><label>Telephone</label><input id="companyPhone" class="form-control"></div><div class="form-group"><label>Email</label><input id="companyEmail" class="form-control"></div><div class="form-group"><label>TVA (%)</label><input id="taxRate" type="number" class="form-control"></div><div class="form-group"><label>Monnaie</label><select id="currencySelect" class="form-control"><option value="FCFA">FCFA</option><option value="XOF">XOF</option><option value="EUR">EUR</option><option value="USD">USD</option></select></div><button class="btn-primary w-full" onclick="saveInvoiceConfig()">Enregistrer</button></div>`; fetch('/api/invoice-config', { headers: { 'Authorization': `Bearer ${token}` } }).then(res => res.json()).then(c => { if(c){ document.getElementById('companyName').value = c.companyName || ''; document.getElementById('companyAddress').value = c.companyAddress || ''; document.getElementById('companyPhone').value = c.companyPhone || ''; document.getElementById('companyEmail').value = c.companyEmail || ''; document.getElementById('taxRate').value = c.taxRate || 0; } }); document.getElementById('currencySelect').value = currency; }
+    async function saveInvoiceConfig() { const config = { companyName: document.getElementById('companyName').value, companyAddress: document.getElementById('companyAddress').value, companyPhone: document.getElementById('companyPhone').value, companyEmail: document.getElementById('companyEmail').value, taxRate: parseFloat(document.getElementById('taxRate').value) || 0 }; await fetch('/api/invoice-config', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(config) }); currency = document.getElementById('currencySelect').value; localStorage.setItem('currency', currency); showToast('Configuration sauvegardee'); }
+
+    function logout() { localStorage.clear(); window.location.href = '/auth.html'; }
+
+    loadShops();
+</script>
+</body>
+</html>
